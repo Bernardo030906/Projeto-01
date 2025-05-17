@@ -4,6 +4,7 @@
 
 char Clientes[10][50];
 char Produtos[10][50];
+char Vendas[10][50];
 
 void insere_cliente(){
     for(int i = 0; i < 10; i++){
@@ -74,9 +75,25 @@ void excluir_produto(){
 
     printf("Produto não encontrado.\n");
 }
+void inserir_venda(){
+     for(int i = 0; i < 10; i++){
+        if(strlen(Vendas[i]) == 0){
+            printf("Informe a venda: \n");
+            scanf("%s", Vendas[i]);
+            break;
+        }
+    }
+}
+void listar_vendas(){
+    for(int i = 0; i < 10; i++){
+        if(strlen(Vendas[i]) > 0){
+        scanf("%s\n", Vendas[i]);
+        break;
+        }
+    }
+}
 
-int main()
-{
+int main(){
    int opc;
 
    do{
@@ -87,7 +104,9 @@ int main()
      printf("4. Inserir Produto\n");
      printf("5. Listar Produto\n");
      printf("6. Excluir Produto\n");
-     printf("7. Sair\n");
+     printf("7. Inserir Vendas\n");
+     printf("8. Listar Vendas\n");
+     printf("9. Sair\n");
      scanf("%d", &opc);
 
      switch(opc){
@@ -110,6 +129,12 @@ int main()
             excluir_produto();
             break;
         case 7:
+            inserir_venda();
+            break;
+        case 8:
+            listar_vendas();
+            break;
+        case 9:
             printf("Até logo!\n");
             break;
         default:
