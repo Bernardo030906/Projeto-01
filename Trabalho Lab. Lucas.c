@@ -11,11 +11,13 @@ typedef struct {
 typedef struct {
     char nome[50];
     int codigo;
+    int estoque;
 } Produto;
 
 typedef struct {
     char cpf_cliente[15];
     int cod_produto;
+    int quantidade;
 } Venda;
 
 Cliente clientes[MAX];
@@ -70,7 +72,10 @@ void inserir_produto() {
             printf("Nome do produto: ");
             fgets(produtos[i].nome, 50, stdin); limpar_linha(produtos[i].nome);
             printf("Código: ");
-            scanf("%d", &produtos[i].codigo); getchar();
+            scanf("%d", &produtos[i].codigo);
+            printf("Estoque: ");
+            scanf("%d", &produtos[i].estoque);
+            getchar(); // consumir '\n'
             printf("Produto cadastrado!\n");
             return;
         }
@@ -82,7 +87,7 @@ void listar_produtos() {
     printf("\n--- Produtos ---\n");
     for (int i = 0; i < MAX; i++) {
         if (strlen(produtos[i].nome) > 0)
-            printf("Produto: %s | Código: %d\n", produtos[i].nome, produtos[i].codigo);
+            printf("Produto: %s | Código: %d | Estoque: %d\n", produtos[i].nome, produtos[i].codigo, produtos[i].estoque);
     }
 }
 
@@ -95,6 +100,7 @@ void excluir_produto() {
         if (produtos[i].codigo == codigo && strlen(produtos[i].nome) > 0) {
             produtos[i].nome[0] = '\0';
             produtos[i].codigo = 0;
+            produtos[i].estoque = 0;
             printf("Produto excluído com sucesso.\n");
             return;
         }
@@ -104,41 +110,119 @@ void excluir_produto() {
 
 void cadastrar_venda() {
     char cpf[15];
-    int codigo;
+    int codigo, quantidade;
 
     printf("CPF do cliente: ");
     fgets(cpf, 15, stdin); limpar_linha(cpf);
     printf("Código do produto: ");
-    scanf("%d", &codigo); getchar();
+    scanf("%d", &codigo);
+    printf("Quantidade: ");
+    scanf("%d", &quantidade);
+    getchar();
 
-    int cliente_encontrado = 0, produto_encontrado = 0;
+    int cliente_encontrado = 0, produto_index = -1;
 
     for (int i = 0; i < MAX; i++) {
         if (strcmp(clientes[i].cpf, cpf) == 0) cliente_encontrado = 1;
-        if (produtos[i].codigo == codigo) produto_encontrado = 1;
+        if (produtos[i].codigo == codigo) produto_index = i;
     }
 
-    if (cliente_encontrado && produto_encontrado) {
-        for (int i = 0; i < MAX; i++) {
-            if (vendas[i].cpf_cliente[0] == '\0') {
-                strcpy(vendas[i].cpf_cliente, cpf);
-                vendas[i].cod_produto = codigo;
-                printf("Venda registrada!\n");
-                return;
-            }
-        }
-        printf("Limite de vendas atingido.\n");
-    } else {
+    if (!cliente_encontrado || produto_index == -1) {
         printf("Cliente ou produto não encontrado.\n");
+        return;
     }
+
+    if (produtos[produto_index].estoque < quantidade) {
+        printf("Estoque insuficiente.\n");
+        return;
+    }
+
+    for (int i = 0; i < MAX; i++) {
+        if (vendas[i].cpf_cliente[0] == '\0') {
+            strcpy(vendas[i].cpf_cliente, cpf);
+            vendas[i].cod_produto = codigo;
+            vendas[i].quantidade = quantidade;
+            produtos[produto_index].estoque -= quantidade;
+            printf("Venda registrada!\n");
+            return;
+        }
+    }
+
+    printf("Limite de vendas atingido.\n");
 }
 
 void listar_vendas() {
-    printf("\n--- Vendas ---\n");
+    printf("\n--- Notas Fiscais ---\n");
     for (int i = 0; i < MAX; i++) {
-        if (vendas[i].cpf_cliente[0] != '\0')
-            printf("CPF Cliente: %s | Código Produto: %d\n", vendas[i].cpf_cliente, vendas[i].cod_produto);
+        if (vendas[i].cpf_cliente[0] != '\0') {
+            char nome_cliente[50] = "Desconhecido";
+            char nome_produto[50] = "Desconhecido";
+
+            for (int j = 0; j < MAX; j++) {
+                if (strcmp(clientes[j].cpf, vendas[i].cpf_cliente) == 0)
+                    strcpy(nome_cliente, clientes[j].nome);
+                if (produtos[j].codigo == vendas[i].cod_produto)
+                    strcpy(nome_produto, produtos[j].nome);
+            }
+
+            printf("Cliente: %s | CPF: %s | Produto: %s | Código: %d | Qtde: %d\n",
+                nome_cliente, vendas[i].cpf_cliente,
+                nome_produto, vendas[i].cod_produto,
+                vendas[i].quantidade);
+        }
     }
+}
+
+void produto_mais_vendido() {
+    int contagem[MAX] = {0};
+
+    for (int i = 0; i < MAX; i++) {
+        if (vendas[i].cpf_cliente[0] != '\0') {
+            for (int j = 0; j < MAX; j++) {
+                if (produtos[j].codigo == vendas[i].cod_produto)
+                    contagem[j] += vendas[i].quantidade;
+            }
+        }
+    }
+
+    int max = -1, index = -1;
+    for (int i = 0; i < MAX; i++) {
+        if (contagem[i] > max) {
+            max = contagem[i];
+            index = i;
+        }
+    }
+
+    if (index != -1)
+        printf("Produto mais vendido: %s (Qtde: %d)\n", produtos[index].nome, max);
+    else
+        printf("Nenhuma venda realizada ainda.\n");
+}
+
+void cliente_que_mais_comprou() {
+    int contagem[MAX] = {0};
+
+    for (int i = 0; i < MAX; i++) {
+        if (vendas[i].cpf_cliente[0] != '\0') {
+            for (int j = 0; j < MAX; j++) {
+                if (strcmp(clientes[j].cpf, vendas[i].cpf_cliente) == 0)
+                    contagem[j] += vendas[i].quantidade;
+            }
+        }
+    }
+
+    int max = -1, index = -1;
+    for (int i = 0; i < MAX; i++) {
+        if (contagem[i] > max) {
+            max = contagem[i];
+            index = i;
+        }
+    }
+
+    if (index != -1)
+        printf("Cliente que mais comprou: %s (Qtde: %d)\n", clientes[index].nome, max);
+    else
+        printf("Nenhuma venda registrada ainda.\n");
 }
 
 int main() {
@@ -154,7 +238,9 @@ int main() {
         printf("6. Listar Vendas\n");
         printf("7. Excluir Cliente\n");
         printf("8. Excluir Produto\n");
-        printf("9. Sair\n");
+        printf("9. Produto Mais Vendido\n");
+        printf("10. Cliente que Mais Comprou\n");
+        printf("11. Sair\n");
         printf("Escolha: ");
         scanf("%d", &opcao); getchar();
 
@@ -167,10 +253,12 @@ int main() {
             case 6: listar_vendas(); break;
             case 7: excluir_cliente(); break;
             case 8: excluir_produto(); break;
-            case 9: printf("Obrigado, até mais!!\n"); break;
-            default: printf("Opção inválida, digite um novo comando.\n");
+            case 9: produto_mais_vendido(); break;
+            case 10: cliente_que_mais_comprou(); break;
+            case 11: printf("Obrigado, até mais!\n"); break;
+            default: printf("Opção inválida.\n");
         }
-    } while (opcao != 9);
+    } while (opcao != 11);
 
     return 0;
 }
