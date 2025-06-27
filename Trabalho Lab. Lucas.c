@@ -20,9 +20,15 @@ typedef struct {
     int quantidade;
 } Venda;
 
+typedef struct {
+    char cpf_cliente[15];
+    char forma[20]; // pix, dinheiro, boleto, cartao
+} Pagamento;
+
 Cliente clientes[MAX];
 Produto produtos[MAX];
 Venda vendas[MAX];
+Pagamento pagamentos[MAX];
 
 void limpar_linha(char *linha) {
     linha[strcspn(linha, "\n")] = 0;
@@ -75,7 +81,7 @@ void inserir_produto() {
             scanf("%d", &produtos[i].codigo);
             printf("Estoque: ");
             scanf("%d", &produtos[i].estoque);
-            getchar(); // consumir '\n'
+            getchar();
             printf("Produto cadastrado!\n");
             return;
         }
@@ -137,13 +143,19 @@ void cadastrar_venda() {
         return;
     }
 
+    char forma_pagamento[20];
+    printf("Forma de pagamento (pix/dinheiro/boleto/cartao): ");
+    fgets(forma_pagamento, 20, stdin); limpar_linha(forma_pagamento);
+
     for (int i = 0; i < MAX; i++) {
         if (vendas[i].cpf_cliente[0] == '\0') {
             strcpy(vendas[i].cpf_cliente, cpf);
             vendas[i].cod_produto = codigo;
             vendas[i].quantidade = quantidade;
             produtos[produto_index].estoque -= quantidade;
-            printf("Venda registrada!\n");
+            strcpy(pagamentos[i].cpf_cliente, cpf);
+            strcpy(pagamentos[i].forma, forma_pagamento);
+            printf("Venda registrada com pagamento via %s!\n", forma_pagamento);
             return;
         }
     }
@@ -165,17 +177,81 @@ void listar_vendas() {
                     strcpy(nome_produto, produtos[j].nome);
             }
 
-            printf("Cliente: %s | CPF: %s | Produto: %s | Código: %d | Qtde: %d\n",
+            printf("Cliente: %s | CPF: %s | Produto: %s | Código: %d | Qtde: %d | Pagamento: %s\n",
                 nome_cliente, vendas[i].cpf_cliente,
                 nome_produto, vendas[i].cod_produto,
-                vendas[i].quantidade);
+                vendas[i].quantidade, pagamentos[i].forma);
         }
     }
 }
 
+void alterar_cliente() {
+    char cpf[15];
+    printf("Digite o CPF do cliente a alterar: ");
+    fgets(cpf, 15, stdin); limpar_linha(cpf);
+
+    for (int i = 0; i < MAX; i++) {
+        if (strcmp(clientes[i].cpf, cpf) == 0) {
+            printf("Novo nome: ");
+            fgets(clientes[i].nome, 50, stdin); limpar_linha(clientes[i].nome);
+            printf("Nome alterado com sucesso.\n");
+            return;
+        }
+    }
+    printf("Cliente não encontrado.\n");
+}
+
+void alterar_produto() {
+    int codigo;
+    printf("Digite o código do produto a alterar: ");
+    scanf("%d", &codigo); getchar();
+
+    for (int i = 0; i < MAX; i++) {
+        if (produtos[i].codigo == codigo) {
+            printf("Novo nome do produto: ");
+            fgets(produtos[i].nome, 50, stdin); limpar_linha(produtos[i].nome);
+            printf("Produto alterado com sucesso.\n");
+            return;
+        }
+    }
+    printf("Produto não encontrado.\n");
+}
+
+void alterar_venda() {
+    char cpf[15];
+    int codigo;
+    printf("Digite o CPF da venda: ");
+    fgets(cpf, 15, stdin); limpar_linha(cpf);
+    printf("Digite o código do produto da venda: ");
+    scanf("%d", &codigo); getchar();
+
+    for (int i = 0; i < MAX; i++) {
+        if (strcmp(vendas[i].cpf_cliente, cpf) == 0 && vendas[i].cod_produto == codigo) {
+            printf("Nova quantidade: ");
+            int nova_quantidade;
+            scanf("%d", &nova_quantidade); getchar();
+
+            for (int j = 0; j < MAX; j++) {
+                if (produtos[j].codigo == codigo) {
+                    produtos[j].estoque += vendas[i].quantidade;
+                    if (produtos[j].estoque < nova_quantidade) {
+                        printf("Estoque insuficiente para alterar a venda.\n");
+                        produtos[j].estoque -= vendas[i].quantidade;
+                        return;
+                    }
+                    produtos[j].estoque -= nova_quantidade;
+                    vendas[i].quantidade = nova_quantidade;
+                    printf("Venda atualizada!\n");
+                    return;
+                }
+            }
+        }
+    }
+    printf("Venda não encontrada.\n");
+}
+
 void produto_mais_vendido() {
     int contagem[MAX] = {0};
-
     for (int i = 0; i < MAX; i++) {
         if (vendas[i].cpf_cliente[0] != '\0') {
             for (int j = 0; j < MAX; j++) {
@@ -184,7 +260,6 @@ void produto_mais_vendido() {
             }
         }
     }
-
     int max = -1, index = -1;
     for (int i = 0; i < MAX; i++) {
         if (contagem[i] > max) {
@@ -192,7 +267,6 @@ void produto_mais_vendido() {
             index = i;
         }
     }
-
     if (index != -1)
         printf("Produto mais vendido: %s (Qtde: %d)\n", produtos[index].nome, max);
     else
@@ -201,7 +275,6 @@ void produto_mais_vendido() {
 
 void cliente_que_mais_comprou() {
     int contagem[MAX] = {0};
-
     for (int i = 0; i < MAX; i++) {
         if (vendas[i].cpf_cliente[0] != '\0') {
             for (int j = 0; j < MAX; j++) {
@@ -210,7 +283,6 @@ void cliente_que_mais_comprou() {
             }
         }
     }
-
     int max = -1, index = -1;
     for (int i = 0; i < MAX; i++) {
         if (contagem[i] > max) {
@@ -218,7 +290,6 @@ void cliente_que_mais_comprou() {
             index = i;
         }
     }
-
     if (index != -1)
         printf("Cliente que mais comprou: %s (Qtde: %d)\n", clientes[index].nome, max);
     else
@@ -227,7 +298,6 @@ void cliente_que_mais_comprou() {
 
 int main() {
     int opcao;
-
     do {
         printf("\n--- MENU ---\n");
         printf("1. Inserir Cliente\n");
@@ -240,7 +310,10 @@ int main() {
         printf("8. Excluir Produto\n");
         printf("9. Produto Mais Vendido\n");
         printf("10. Cliente que Mais Comprou\n");
-        printf("11. Sair\n");
+        printf("11. Alterar Venda\n");
+        printf("12. Alterar Cliente\n");
+        printf("13. Alterar Produto\n");
+        printf("14. Sair\n");
         printf("Escolha: ");
         scanf("%d", &opcao); getchar();
 
@@ -255,10 +328,14 @@ int main() {
             case 8: excluir_produto(); break;
             case 9: produto_mais_vendido(); break;
             case 10: cliente_que_mais_comprou(); break;
-            case 11: printf("Obrigado, até mais!\n"); break;
+            case 11: alterar_venda(); break;
+            case 12: alterar_cliente(); break;
+            case 13: alterar_produto(); break;
+            case 14: printf("Obrigado, até mais!\n"); break;
             default: printf("Opção inválida.\n");
         }
-    } while (opcao != 11);
+    } while (opcao != 14);
 
     return 0;
 }
+        
